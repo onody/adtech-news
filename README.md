@@ -5,7 +5,7 @@
 - 探索は広く（Digiday / AdExchanger / IAB Tech Lab ほか十数サイト）、配信は 3 本に絞る
 - 日本語と英語の両方を 1 通に入れる
 - 配信済みトピックは `state/seen.json` に記録し、翌日以降は除外する（続報は「前回からの差分」だけ書く）
-- 平日 06:12 に launchd が起動
+- 平日 06:12 に launchd が起動。失敗時のリトライとして 07:12 / 08:12 にも起動する（送信済みなら即終了、二重送信はしない）
 
 ## セットアップ
 
@@ -40,6 +40,7 @@ security add-generic-password -a onodera212@gmail.com -s adtech-news-smtp -w '<1
 | `bin/run.sh --dry-run` | 生成・レンダリングのみ。送信せず `state` も更新しない |
 | `bin/run.sh --date 2026-07-28` | 日付を指定 |
 | `bin/run.sh --send-only --date 2026-07-28` | 既存の JSON を送るだけ（生成をやり直さない） |
+| `bin/run.sh --resend` | その日すでに送信済みでも再送する |
 | `bin/uninstall.sh` | launchd から解除 |
 
 ## 構成
@@ -58,14 +59,20 @@ launchd/                   スケジュール定義
 
 ## 動作の流れ
 
-1. launchd が `bin/run.sh` を起動
-2. `claude -p` をヘッドレスで実行。`state/seen.json` を読んで既報を除外し、
+1. launchd が `bin/run.sh` を平日 06:12 / 07:12 / 08:12 に起動
+2. `out/<date>.sent`（送信成功マーカー）があれば即終了。無ければ続行
+3. `out/<date>.json` が既に有効な形で存在するなら再生成はスキップ（前の試行で生成だけ成功していた場合、コストをかけ直さない）
+4. 無ければ `claude -p` をヘッドレスで実行。`state/seen.json` を読んで既報を除外し、
    `prompts/digest.md` に従って 12 本以上の候補を集め、インパクト順に 3 本を選び、
    日英で書いて `out/<date>.json` に出力
-3. `lib/render.py` が HTML とテキストを生成
-4. `lib/send.py` が Gmail SMTP で送信し、配信したトピックを `state/seen.json` に追記
+5. `lib/render.py` が HTML とテキストを生成
+6. `lib/send.py` が Gmail SMTP で送信し、配信したトピックを `state/seen.json` に追記
+7. 送信に成功したら `out/<date>.sent` を作成する
 
-送信が失敗した場合、`state` は更新されない。同じ内容で `--send-only` を再実行できる。
+**リトライの挙動**: 06:12 の実行が失敗した場合（Mac がスリープ中だった、生成中にエラー、SMTP 障害など）、
+`.sent` マーカーが無いままなので 07:12 に自動で再試行される。生成済みの JSON があれば送信だけやり直すので、
+リトライのたびに課金が発生するわけではない。08:12 まで失敗し続けた場合はログ（`logs/<date>.log`）を確認する。
+3 回とも失敗した場合、その日は配信されない（自動の4回目はない）。
 
 ## チューニング
 

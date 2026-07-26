@@ -6,6 +6,11 @@
 #   run.sh --date 2026-07-28     日付を指定
 #   run.sh --send-only           既存の out/<date>.json を送信するだけ
 #   run.sh --force               土日でも実行する
+#   run.sh --resend              その日すでに送信済みでも再送する
+#
+# launchd は同じ日に 6:12 / 7:12 / 8:12 の3回起動する。
+# out/<date>.sent がある（＝送信成功済み）なら 2回目以降は即終了するので、
+# 6時の実行が失敗（Mac がスリープ中だった、API エラー等）しても 7時・8時で再試行される。
 
 set -euo pipefail
 
@@ -19,6 +24,7 @@ source "$ROOT/config.sh"
 DRY_RUN=0
 SEND_ONLY=0
 FORCE=0
+RESEND=0
 DATE="$(date +%F)"
 
 while [[ $# -gt 0 ]]; do
@@ -26,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run)   DRY_RUN=1; shift ;;
     --send-only) SEND_ONLY=1; shift ;;
     --force)     FORCE=1; shift ;;
+    --resend)    RESEND=1; shift ;;
     --date)      DATE="$2"; shift 2 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
@@ -44,8 +51,23 @@ if [[ "$DOW" -ge 6 && "$FORCE" -eq 0 ]]; then
 fi
 
 DIGEST="$ROOT/out/$DATE.json"
+SENT_MARKER="$ROOT/out/$DATE.sent"
 
-if [[ "$SEND_ONLY" -eq 0 ]]; then
+if [[ -f "$SENT_MARKER" && "$DRY_RUN" -eq 0 && "$RESEND" -eq 0 ]]; then
+  echo "本日分は送信済みのためスキップ ($SENT_MARKER)。再送するには --resend。"
+  exit 0
+fi
+
+ALREADY_GENERATED=0
+if [[ -f "$DIGEST" ]] && python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$DIGEST" 2>/dev/null; then
+  ALREADY_GENERATED=1
+fi
+
+if [[ "$SEND_ONLY" -eq 0 && "$ALREADY_GENERATED" -eq 1 ]]; then
+  echo "$DIGEST は既に生成済み（前回試行分）。再生成せず送信のみ行います。"
+fi
+
+if [[ "$SEND_ONLY" -eq 0 && "$ALREADY_GENERATED" -eq 0 ]]; then
   [[ -f "$ROOT/state/seen.json" ]] || echo '{"entries":[]}' > "$ROOT/state/seen.json"
 
   PROMPT="$(sed -e "s|{{DATE}}|$DATE|g" -e "s|{{ITEM_COUNT}}|$ITEM_COUNT|g" \
@@ -90,5 +112,7 @@ SEND_ARGS=(
 [[ "$DRY_RUN" -eq 1 ]] && SEND_ARGS+=(--dry-run)
 
 python3 "$ROOT/lib/send.py" "${SEND_ARGS[@]}"
+
+[[ "$DRY_RUN" -eq 0 ]] && date +%T > "$SENT_MARKER"
 
 echo "=== done $(date +%T) ==="
