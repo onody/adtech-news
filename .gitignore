@@ -1,0 +1,8 @@
+out/
+logs/
+state/seen.json
+
+# macOS / Python
+.DS_Store
+__pycache__/
+*.pyc
