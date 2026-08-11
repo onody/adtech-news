@@ -25,6 +25,7 @@
 - 各社の公式発表: Google Ads Help の announcements, blog.google/products/ads-commerce, advertising.amazon.com, business.meta.com/news, newsroom.tiktok.com, openai.com/index, about.netflix.com
 - 規制・標準: W3C PATCG/PATWG, EU DMA/DSA 関連, 米 FTC/DOJ, 各国個人情報保護当局
 - 日本: 電通グループ / 電通デジタル / サイバーエージェント / 博報堂DYの各プレスリリース、MarkeZine、Web担当者Forum、日経クロストレンド
+- 日本（Impress Watch）: https://www.watch.impress.co.jp/ はマーケティング・広告関連の記事のみ対象にする（例: Google / Yahoo! JAPAN / LINEヤフーなど大手のID・トラッキング・広告プロダクトの動き。https://www.watch.impress.co.jp/docs/news/2129717.html のような記事が該当）。ゲーム・PC・家電など無関係なジャンルの記事は無視する
 
 **探索の観点（ユーザーの関心領域）**
 1. Google / Amazon / Meta / TikTok / Apple など大手の広告プロダクトの機能追加・仕様変更・廃止
