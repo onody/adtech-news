@@ -15,7 +15,8 @@ KEYCHAIN_SERVICE="adtech-news-smtp"
 ITEM_COUNT=3
 
 # 使用モデル（opus / sonnet / claude-opus-5 など）
-MODEL="opus"
+# 2026-08-12: コスト削減のため opus から sonnet に変更。品質劣化があれば戻すこと。
+MODEL="sonnet"
 
 # 1 実行あたりのコスト上限（USD）
 MAX_BUDGET_USD=3.00
